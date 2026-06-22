@@ -1,0 +1,41 @@
+# ---- Terraform ----
+# Never commit state, lock vars, or secret-bearing tfvars.
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+# Actual tfvars may contain project IDs / sensitive config — only examples are tracked.
+**/terraform.tfvars
+**/*.auto.tfvars
+.terraformrc
+terraform.rc
+
+# ---- Node / app ----
+node_modules/
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+
+# ---- Secrets / local env ----
+.env
+.env.*
+.env*.local
+*.env
+# Keep tracked examples / placeholder env templates:
+!.env.example
+!*.env.example
+*.pem
+*.key
+*.db
+*.db-shm
+*.db-wal
+
+# ---- Internal security audit (DO NOT PUBLISH) ----
+SECURITY-AUDIT.md
+
+# ---- OS ----
+.DS_Store

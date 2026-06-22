@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "melearn-frontend",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-c",
+        "export PATH=\"/Users/macarthur/.nvm/versions/node/v22.13.0/bin:$PATH\"; cd \"/Users/macarthur/melearn starter/frontend\"; exec npm run dev"
+      ],
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}

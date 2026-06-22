@@ -1,0 +1,161 @@
+name: Deploy
+
+# Build + push container images to Artifact Registry, run DB migrations as a
+# one-shot Cloud Run Job, then deploy the Cloud Run services.
+#
+# Authenticates to GCP with Workload Identity Federation (WIF) — keyless, no
+# long-lived JSON service-account keys. See infra/README.md ("Workload Identity
+# Federation setup").
+#
+# DEPLOY SEQUENCE (critical):
+#   1. build & push frontend + backend images (tagged with the git SHA)
+#   2. run the migration Job (melearn-<env>-backend-migrate) to completion
+#   3. ONLY if migrations succeed, roll out the backend + frontend services
+#
+# Migrations NEVER run in the app container or on app boot, so N horizontally-
+# scaled service instances cannot race/double-apply migrations.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, prod]
+        default: dev
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required for WIF OIDC token
+
+env:
+  GCP_REGION: asia-southeast1
+  ARTIFACT_REPO: melearn
+
+jobs:
+  # ===========================================================================
+  # 1) Build & push both images. Pinned action versions.
+  # ===========================================================================
+  build:
+    name: Build & push (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    strategy:
+      fail-fast: true
+      matrix:
+        app: [frontend, backend]
+    outputs:
+      tag: ${{ steps.img.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOYER_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Resolve image reference
+        id: img
+        run: |
+          IMAGE="${GCP_REGION}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${ARTIFACT_REPO}/${{ matrix.app }}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.app }}
+          file: ./${{ matrix.app }}/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.img.outputs.image }}:${{ steps.img.outputs.tag }}
+            ${{ steps.img.outputs.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===========================================================================
+  # 2) Run DB migrations as a one-shot Cloud Run Job. Blocks deploy on failure.
+  # ===========================================================================
+  migrate:
+    name: Run DB migrations (Cloud Run Job)
+    runs-on: ubuntu-latest
+    needs: build
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOYER_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Update migration Job image to this SHA
+        env:
+          ENV_NAME: ${{ github.event.inputs.environment || 'dev' }}
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          IMAGE="${GCP_REGION}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${ARTIFACT_REPO}/backend:${TAG}"
+          gcloud run jobs update "melearn-${ENV_NAME}-backend-migrate" \
+            --region "${GCP_REGION}" \
+            --image "${IMAGE}" \
+            --quiet
+
+      - name: Execute migration Job and wait for completion
+        env:
+          ENV_NAME: ${{ github.event.inputs.environment || 'dev' }}
+        run: |
+          # --wait blocks until the execution finishes and returns non-zero on
+          # failure, so a failed migration fails this job and stops the deploy.
+          gcloud run jobs execute "melearn-${ENV_NAME}-backend-migrate" \
+            --region "${GCP_REGION}" \
+            --wait
+
+  # ===========================================================================
+  # 3) Deploy services — ONLY after migrations succeed. Backend first.
+  # ===========================================================================
+  deploy:
+    name: Deploy service (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    needs: [build, migrate]
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1 # backend before frontend
+      matrix:
+        app: [backend, frontend]
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOYER_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: melearn-${{ github.event.inputs.environment || 'dev' }}-${{ matrix.app }}
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ matrix.app }}:${{ needs.build.outputs.tag }}

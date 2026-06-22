@@ -1,0 +1,93 @@
+---
+description: UI quality rules (impeccable.style principles) for Melearn — raw Tailwind sky/blue, applies to all frontend components, pages, and layouts
+globs: ["frontend/src/**/*.tsx", "frontend/src/**/*.jsx", "frontend/src/**/*.css"]
+alwaysApply: true
+---
+
+# UI Quality Standard — impeccable.style
+
+Reference: https://impeccable.style/
+
+> This project uses **raw Tailwind utility classes in a sky/blue palette**. daisyUI was removed — do NOT use `btn`/`card`/`badge`/semantic tokens (`bg-base-*`, `text-primary`) or `data-theme`.
+
+## Core Principle
+
+Every UI element must earn its place. Remove decoration that isn't information. If an element does nothing for comprehension or action, delete it.
+
+## Visual Hierarchy
+- One clear focal point per section. Never two competing headlines of equal weight.
+- Strict 3-level type scale: display → heading → body.
+- `font-display` (Sora 600–700) for h1/h2 only. Body is `font-sans` (Source Sans 3 400/600).
+- Contrast drives hierarchy before size does.
+
+## Whitespace
+- Section rhythm: `py-16` minimum, `py-20`/`py-24` for hero/featured blocks.
+- Card internal padding: `p-6` minimum.
+- Stack with `gap-*`, not margin hacks.
+
+## Color — raw Tailwind sky/blue
+
+| Purpose | Classes |
+|---------|---------|
+| Brand / headings / accents | `text-sky-600` / `text-sky-700` / `text-sky-800` |
+| Primary button | `bg-blue-500 text-white hover:bg-blue-600` |
+| Accent / CTA button | `bg-sky-600 text-white hover:bg-sky-500` |
+| Page background | `bg-white`, `bg-sky-50`, `bg-gradient-to-b from-sky-50 to-white` |
+| Body text | `text-gray-800` / `text-gray-600` / `text-gray-700` |
+| Success / error | `text-green-700 bg-green-50` / `text-red-700 bg-red-50` |
+| Cards | `bg-white rounded-xl shadow-lg` |
+
+## Typography rules
+```tsx
+// heading
+<h1 className="font-display font-bold text-sky-700">...</h1>
+// body
+<p className="font-sans text-gray-600 leading-relaxed">...</p>
+```
+
+## Spacing scale
+Tailwind scale; prefer multiples of 4 (4 / 8 / 12 / 16 / 24 / 32 / 48 / 64).
+
+## Interaction states
+Every interactive element needs all four:
+- Default
+- Hover (`hover:`)
+- Focus-visible — `focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none`
+- Disabled (`disabled:opacity-50 disabled:cursor-not-allowed`)
+
+Never use bare `outline-none` / `focus:outline-none` without a replacement ring.
+
+## Motion
+```tsx
+className="transition-transform duration-200 motion-reduce:transition-none"
+```
+Animate `transform`/`opacity` only. Never animate layout properties. Respect `prefers-reduced-motion`.
+
+## Accessibility
+- All images: meaningful `alt` or `alt=""` if decorative; prefer `next/image`
+- Icon-only controls: `aria-label`; toggles: `aria-expanded`
+- Color never the sole state indicator
+- Min touch target 44×44px (`min-h-[44px] min-w-[44px]`)
+- Keyboard focus must be visible
+
+## Anti-patterns for this project
+- Purple gradient heroes
+- Glassmorphism (`backdrop-blur` + semi-transparent card bg)
+- "Empower your journey" filler copy
+- Identical icon-heading-text grid repeated in every section
+- daisyUI classes / `data-theme` (removed)
+
+## Layout container
+```tsx
+<div className="max-w-6xl mx-auto px-4">
+```
+Never bare `container`.
+
+## Quick checklist
+- [ ] Raw Tailwind sky/blue palette (no daisyUI tokens)
+- [ ] Hover + focus-visible ring on every interactive element
+- [ ] `motion-reduce:transition-none` on transitions
+- [ ] Headings `font-display`, body `font-sans`
+- [ ] Container `max-w-6xl mx-auto px-4`
+- [ ] `next/image` + `alt` for images
+- [ ] No decorative element that doesn't serve comprehension or action

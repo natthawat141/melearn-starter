@@ -1,0 +1,43 @@
+// Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+// These are PLACEHOLDERS — replace with your real GCP values.
+// Do NOT put real secret values here. db_user_password should come from the
+// environment: export TF_VAR_db_user_password="$(read from your secret store)".
+
+project_id = "melearn-dev-000000" # <-- your dev GCP project ID
+region     = "asia-southeast1"     # Singapore
+
+artifact_repository_id = "melearn"
+image_tag              = "latest" # CI overrides this with the git SHA
+
+# Scale-to-zero for free credits.
+frontend_min_instances = 0
+frontend_max_instances = 2
+backend_min_instances  = 0
+backend_max_instances  = 2
+
+# ---- Cloud SQL ----
+db_version             = "POSTGRES_16"
+db_tier                = "db-f1-micro" # smallest/cheapest; prod should use db-custom-*
+db_availability_type   = "ZONAL"       # REGIONAL for prod HA
+db_disk_size           = 10
+db_deletion_protection = false # true in prod
+db_name                = "melearn"
+db_user_name           = "melearn_app"
+# db_user_password — DO NOT set here. Provide via TF_VAR_db_user_password.
+
+# ---- WIF (keyless GitHub Actions deploy) ----
+github_repository = "your-org/melearn" # <-- owner/repo allowed to deploy
+
+# ---- Observability ----
+alert_email     = "aione.solutions.th@gmail.com"
+billing_account = null  # e.g. "0X0X0X-0X0X0X-0X0X0X" to enable the budget alert
+budget_amount   = 50
+budget_currency = "USD"
+
+# Non-sensitive frontend env. Sensitive values go to Secret Manager, NOT here.
+frontend_public_env = {
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_xxxxxxxxxxxxxxxxxxxx"
+  NEXT_PUBLIC_BITKUB_NETWORK        = "BKC_TESTNET"
+}
+
+backend_allow_public_access = true

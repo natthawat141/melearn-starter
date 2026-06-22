@@ -1,0 +1,71 @@
+---
+description: Melearn stack rules — Next.js 16 (Pages Router), raw Tailwind, Clerk, Solana wallet-adapter, Supabase
+globs: ["frontend/src/**/*.{tsx,ts,jsx,js}", "frontend/**/*.{mjs,json}"]
+alwaysApply: true
+---
+
+# Melearn Stack Rules
+
+**Frontend:** Next.js 16 (Pages Router) · Tailwind CSS 3 (**raw utilities, NO daisyUI**) · TypeScript (strict) · React 19 · Framer Motion
+**Auth:** Clerk (incl. Sign-in with Solana) — Bitkub/MetaMask removed
+**Web3:** `@solana/wallet-adapter` (Phantom/Solflare) for on-chain
+**Data:** Supabase (Postgres + storage) · Mux (video, secret server-side only)
+
+> daisyUI was removed. Build UI with raw Tailwind utilities in a sky/blue palette (see `ui-quality.mdc`). No `btn`/`card`/`navbar`/`badge`/semantic tokens, no `data-theme`.
+
+---
+
+## Identity vs on-chain — keep separate
+- **Clerk** owns identity: sign-in, sessions, JWT, user profile. Use `<SignInButton>`, `<UserButton>`, and `<Show when="signed-in|signed-out">` (Clerk v7 — `SignedIn`/`SignedOut` are not root exports here).
+- **`@solana/wallet-adapter`** owns on-chain: connecting Phantom/Solflare, signing transactions, reading balances. Surfaced via `WalletMultiButton` and the `useWallet` hook (`src/hooks/useWallet.ts`, wraps `@solana/wallet-adapter-react`).
+- Do not merge the two concerns. A user signs in (Clerk) and optionally connects a wallet (adapter); Clerk Sign-in with Solana can bridge them.
+
+## Provider composition (`src/pages/_app.tsx`)
+```
+ClerkProvider
+  └── SolanaProvider (ConnectionProvider > WalletProvider > WalletModalProvider)
+        └── <div className={`${sora.variable} ${sourceSans3.variable} font-sans`}>
+              └── Component
+```
+
+## Supabase
+- Public client: `src/lib/supabase.ts` (uses `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`).
+- Authenticated/RLS client: `src/lib/useSupabaseClient.ts` — per-session client using Supabase's native third-party-auth `accessToken` option fed by the Clerk session.
+
+## Routing / middleware
+- Next 16 renamed `middleware.ts` → **`src/proxy.ts`** (uses `clerkMiddleware`). Protect ONLY authenticated areas (e.g. `/user(.*)`). NEVER gate the public marketing routes (`/`, `/courses`, `/about`) — doing so 404s anonymous visitors.
+
+## Fonts
+Loaded via `next/font/google` in `_app.tsx` (Sora + Source Sans 3) — NOT a Google Fonts `<link>`. Apply with `font-display` (headings) / `font-sans` (body).
+
+## Images
+- Prefer `next/image`. Local assets in `/public/img/`.
+- Remote images require `images.remotePatterns` in `next.config.mjs`; otherwise keep a plain `<img>` with a one-line eslint-disable + reason.
+
+## File structure
+```
+frontend/src/
+  pages/                  ← Pages Router (index, courses, sign-in/[[...]], sign-up/[[...]], user/)
+  proxy.ts                ← clerkMiddleware (Next 16 name)
+  components/
+    layout/               ← Navbar, Footer
+    sections/             ← Hero, FeaturedCourses, Features, Partners, Newsletter, Courses
+    providers/            ← SolanaProvider
+  hooks/                  ← useWallet (Solana)
+  lib/                    ← supabase, useSupabaseClient
+  types/                  ← shared interfaces (Course, Partner, …)
+```
+
+## TypeScript
+- `interface` for component props; no `any` (use `unknown` + narrow); return types on exported functions.
+
+## Environment / tooling
+- Node 22 required (`nvm use 22`); default Node 16 fails.
+- Project path contains a space (`melearn starter`) — a known ESM footgun; a `@ledgerhq/errors` postinstall patch + `next.config.mjs` externals exist because of it. Renaming the dir to `melearn-starter` is the real fix (coordinated change).
+- Secrets: `MUX_TOKEN_SECRET`, `CLERK_SECRET_KEY` are server-side only — never `NEXT_PUBLIC_`.
+
+## Tests
+Vitest + React Testing Library (unit/component/integration), Playwright (e2e). Scripts: `npm test`, `npm run test:e2e`.
+
+## Bilingual UI
+- Nav labels: English · Wallet/auth actions + errors: Thai (`เชื่อมต่อกระเป๋าเงิน`, `ยกเลิก`, `เกิดข้อผิดพลาด`) · Course titles: English w/ Thai subtitle where available.
