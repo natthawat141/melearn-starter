@@ -16,8 +16,8 @@ name: Deploy
 # scaled service instances cannot race/double-apply migrations.
 
 on:
-  push:
-    branches: [main]
+  # Manual only — deploy requires GCP/WIF secrets to be configured first.
+  # See infra/README.md before enabling automatic deploys.
   workflow_dispatch:
     inputs:
       environment:

@@ -1,16 +1,20 @@
-import { dirname } from 'path'
-import { fileURLToPath } from 'url'
-import { FlatCompat } from '@eslint/eslintrc'
+import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
+import nextTypescript from 'eslint-config-next/typescript';
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-})
-
-const eslintConfig = [
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+// Flat config (ESLint v9+). Compose Next's shareable flat configs directly —
+// FlatCompat + the legacy `extends` form crashes under ESLint 9.
+const config = [
+  ...nextCoreWebVitals,
+  ...nextTypescript,
+  {
+    ignores: [
+      '.next/**',
+      'node_modules/**',
+      'src/payload-types.ts',
+      'src/payload-generated-schema.ts',
+      'src/migrations/**',
+    ],
+  },
   {
     rules: {
       '@typescript-eslint/ban-ts-comment': 'warn',
@@ -19,20 +23,13 @@ const eslintConfig = [
       '@typescript-eslint/no-unused-vars': [
         'warn',
         {
-          vars: 'all',
-          args: 'after-used',
-          ignoreRestSiblings: false,
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
-          destructuredArrayIgnorePattern: '^_',
           caughtErrorsIgnorePattern: '^(_|ignore)',
         },
       ],
     },
   },
-  {
-    ignores: ['.next/', 'src/payload-types.ts', 'src/payload-generated-schema.ts'],
-  },
-]
+];
 
-export default eslintConfig
+export default config;
