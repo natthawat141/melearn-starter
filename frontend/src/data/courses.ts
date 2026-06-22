@@ -1,6 +1,6 @@
 import type { Course } from '@/types';
 
-// TODO: replace with API call once CMS backend is live
+// Roadmap: load from the Payload CMS API (/api/courses)
 export const FEATURED_COURSES: Course[] = [
   {
     id: 1,

@@ -1,4 +1,4 @@
-// TODO: implement user dashboard (enrollments, credentials, profile)
+// Roadmap (v0.4): enrollments, credentials, and profile for the signed-in user
 const UserPage = () => {
   return (
     <div className="min-h-screen bg-sky-50 flex items-center justify-center">

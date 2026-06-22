@@ -2,9 +2,8 @@
 
 > A Solana-hackathon e-learning platform for Blockchain, Web3, and career courses — with wallet sign-in today and on-chain credentials on the roadmap.
 
-<!-- Badges: replace OWNER/REPO once the repository URL is known. -->
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-informational.svg)](./.github/workflows/ci.yml)
+[![CI](https://github.com/natthawat141/melearn-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/natthawat141/melearn-starter/actions/workflows/ci.yml)
 
 Melearn is a monorepo: a Next.js frontend, a Payload CMS backend, and Terraform
 infrastructure for Google Cloud. Learners sign in with email or a Solana wallet

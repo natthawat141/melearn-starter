@@ -37,21 +37,20 @@ npm install
 npm run dev
 ```
 
-> **Port note:** Payload's Next dev server defaults to **port 3000**, which is the
-> same port the frontend dev server uses. When running both at once, start one of
-> them on another port, e.g. `npm run dev -- -p 3001` for the backend.
+> **Port note:** The backend dev server runs on **port 3001** (pinned in the
+> `dev` script), so it runs alongside the frontend (port 3000) with no conflict.
 
-- **Admin panel:** http://localhost:3000/admin
+- **Admin panel:** http://localhost:3001/admin
   (first visit prompts you to create the initial admin user)
-- **REST API base:** http://localhost:3000/api
-- **GraphQL:** http://localhost:3000/api/graphql (playground at `/api/graphql-playground`)
+- **REST API base:** http://localhost:3001/api
+- **GraphQL:** http://localhost:3001/api/graphql (playground at `/api/graphql-playground`)
 
 ## Database
 
 **Supabase Postgres**, configured via a single `DATABASE_URL` env var passed to
 the Postgres adapter's connection pool. Get the string from the Supabase
 dashboard → **Project Settings → Database → Connection string**
-(project `https://kfwdhtzejhwvhjhlhokn.supabase.co`).
+(project `https://<your-project-ref>.supabase.co`).
 
 **SSL is required by Supabase** — append `?sslmode=require` to the connection
 string (the adapter passes it straight through to `node-postgres`).
@@ -159,7 +158,7 @@ Useful query params: `?depth=1` (populate relationships), `?limit=`, `?page=`,
 Example:
 
 ```bash
-curl "http://localhost:3000/api/courses?depth=1&where[published][equals]=true"
+curl "http://localhost:3001/api/courses?depth=1&where[published][equals]=true"
 ```
 
 CORS and CSRF are configured to allow `http://localhost:3000` (the frontend dev

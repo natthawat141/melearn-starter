@@ -10,7 +10,7 @@ disclosure before a fix is available puts users at risk.
 
 Instead, report it privately to:
 
-- **security@melearn.example** *(placeholder — replace with the real security contact)*
+- **bill.natthawat@gmail.com**
 
 Please include, where possible:
 

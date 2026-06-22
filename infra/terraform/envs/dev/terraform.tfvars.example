@@ -37,7 +37,7 @@ budget_currency = "USD"
 # Non-sensitive frontend env. Sensitive values go to Secret Manager, NOT here.
 frontend_public_env = {
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_xxxxxxxxxxxxxxxxxxxx"
-  NEXT_PUBLIC_BITKUB_NETWORK        = "BKC_TESTNET"
+  NEXT_PUBLIC_SOLANA_CLUSTER        = "devnet"
 }
 
 backend_allow_public_access = true

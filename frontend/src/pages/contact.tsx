@@ -29,7 +29,7 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setSubmitting(true);
-    // TODO: POST /api/contact with form data once backend is live
+    // Roadmap: POST to /api/contact once the endpoint ships
     await new Promise<void>(resolve => setTimeout(resolve, 600));
     setSubmitting(false);
     setSubmitted(true);

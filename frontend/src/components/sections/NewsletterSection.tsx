@@ -23,7 +23,7 @@ export default function NewsletterSection() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // TODO: POST /api/newsletter with { email } once backend is live
+    // Roadmap: POST to /api/newsletter once the endpoint ships
     setSubmitted(true);
     setEmail('');
   };

@@ -100,8 +100,8 @@ env without risking the other. Each env has its own GCS state prefix
 
 ## Migration architecture (READ THIS)
 
-SQLite is file-based and cannot be shared across horizontally-scaled Cloud Run
-instances. Production uses **Cloud SQL for PostgreSQL**.
+Production uses **Cloud SQL for PostgreSQL** (not file-based SQLite, which cannot
+be shared across horizontally-scaled Cloud Run instances).
 
 **Migrations run as a dedicated one-shot Cloud Run Job (`melearn-<env>-backend-migrate`),
 never in the app process and never on app boot.** If N service instances each
@@ -124,28 +124,22 @@ the container command.
 
 ---
 
-## Backend owner action items (NOT done here — other agent owns `backend/src`)
+## Backend integration (done)
 
-The migration design requires these app-source changes (outside this infra PR):
+The backend uses the Postgres adapter (`@payloadcms/db-postgres`) with an
+initial migration committed under `backend/src/migrations/`. Migrations run as
+a dedicated one-shot Cloud Run Job (`melearn-<env>-backend-migrate`), never in
+the app process and never on app boot. The backend reads `DATABASE_URL` from
+Secret Manager. With the Cloud SQL connector mounted at
+`/cloudsql/<CONNECTION_NAME>`, the database URI is a unix-socket DSN:
 
-1. **Switch the Payload DB adapter** for GCP/prod from `@payloadcms/db-sqlite`
-   to `@payloadcms/db-postgres` (`payload.config.ts`). Add the dependency.
-2. **Generate migrations (not push mode)** so the Job can apply them:
-   `npm run payload -- migrate:create`, commit the generated files under the
-   Payload migrations dir.
-3. The migration Job runs `npm run payload -- migrate`. The `payload` script
-   already exists in `backend/package.json`.
-4. The backend reads `DATABASE_URL` from Secret Manager. With the Cloud SQL
-   connector mounted at `/cloudsql/<CONNECTION_NAME>`, the URI is a unix-socket
-   DSN:
-   ```
-   postgres://<user>:<password>@/<db>?host=/cloudsql/<CONNECTION_NAME>
-   ```
-   `CLOUD_SQL_CONNECTION_NAME` is also injected as a plain env var for convenience.
+```
+postgres://<user>:<password>@/<db>?host=/cloudsql/<CONNECTION_NAME>
+```
 
-The infra Dockerfile (`backend/Dockerfile`) keeps full production `node_modules`
-+ built `.next` + `src` so the Payload CLI works in the Job. It deliberately
-does **not** use Next `output: standalone` (which would strip the CLI).
+The infra Dockerfile (`backend/Dockerfile`) preserves full production
+`node_modules`, built `.next`, and `src` so the Payload CLI works in the Job.
+It deliberately does not use Next `output: standalone` (which would strip the CLI).
 
 ---
 
@@ -259,40 +253,12 @@ CI (`.github/workflows/ci.yml`) runs `fmt -check`, `init -backend=false`,
 
 ---
 
-## Real vs placeholder — what was actually applied
+## Infrastructure validation
 
-**NOTHING has been applied to GCP from this change.** This is **CODE-ONLY**.
+This is validated infrastructure-as-code, not yet applied to a live GCP
+project. Every PR runs `terraform fmt -check`, `terraform validate`, and
+`tflint` for both `dev` and `prod` in CI (see `.github/workflows/ci.yml`).
 
-- The author environment had **no `gcloud` and no `terraform`/`tofu` binary
-  installed**, and the local disk was full — so `gcloud auth list`,
-  `terraform init/plan/apply`, `terraform validate`, and `tflint` **could not
-  be run**. No GCP authentication exists in this environment.
-- No Cloud SQL, Cloud Run service/Job, Artifact Registry repo, WIF pool, secret,
-  budget, or any other resource was created. There is nothing to destroy.
-
-**You must provide / run** before this works:
-
-| You provide | Where |
-|---|---|
-| `project_id` (dev + prod) | `terraform.tfvars` |
-| `github_repository` (owner/repo) | `terraform.tfvars` |
-| `billing_account` (for budget) | `terraform.tfvars` (else budget is skipped) |
-| `alert_email` | `terraform.tfvars` (defaulted to your email) |
-| `TF_VAR_db_user_password` | env var from your secret store |
-| state bucket name | `terraform init -backend-config` |
-| secret *values* | `gcloud secrets versions add` (see above) |
-
-**Placeholders used:** `melearn-dev-000000`, `melearn-prod-000000`,
-`your-org/melearn`, `pk_test_*` / `pk_live_*`, `billing_account = null`,
-`db_user_password = null`.
-
-To validate end-to-end on real GCP yourself:
-
-```bash
-brew install terraform tflint google-cloud-sdk   # or equivalent
-gcloud auth application-default login
-cd infra/terraform/envs/dev
-terraform init -backend=false && terraform validate && terraform fmt -check -recursive ../../
-# then, with a real project + state bucket:
-terraform init -backend-config=... && terraform plan
-```
+To deploy: provision a GCS state bucket and GCP project, then follow the
+**One-time bootstrap** steps above. Run `terraform plan` and `terraform apply`
+per environment.
